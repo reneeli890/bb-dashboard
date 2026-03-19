@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BB Dashboard 💕</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #fdf2f8 0%, #fff 50%, #fce7f3 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 1.5rem 1rem;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      color: #db2777;
+    }
+    .header p {
+      color: #f472b6;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #f472b6;
+    }
+
+    /* Main photo viewer */
+    .viewer {
+      position: relative;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .viewer img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: 0.75rem;
+      display: block;
+      transition: opacity 0.6s ease;
+    }
+    .viewer img.fade {
+      opacity: 0;
+    }
+    .viewer-label {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(255,255,255,0.9);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: #db2777;
+    }
+
+    /* Notepad */
+    .notepad-section {
+      margin-top: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .notepad-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .notepad-header h2 {
+      font-size: 1.25rem;
+      color: #db2777;
+    }
+    .notepad-status {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+    .notepad-status.connected { background: #d1fae5; color: #065f46; }
+    .notepad-status.saving { background: #fef3c7; color: #92400e; }
+    .notepad-status.error { background: #fee2e2; color: #991b1b; }
+    .notepad-card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 1rem;
+    }
+    .notepad-card textarea {
+      width: 100%;
+      min-height: 200px;
+      border: 2px solid #fce7f3;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      color: #1f2937;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+    .notepad-card textarea:focus { border-color: #f472b6; }
+    .notepad-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    .notepad-update-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      margin-right: 0.35rem;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .footer {
+      text-align: center;
+      color: #f9a8d4;
+      font-size: 0.75rem;
+      margin-top: 1.5rem;
+      padding-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💕 BB Dashboard 💕</h1>
+      <p>naur you didn't</p>
+    </div>
+
+    <div id="loading" class="loading">Loading photos 💕</div>
+
+    <div id="album" style="display:none">
+      <div class="viewer">
+        <span class="viewer-label">BB 💕</span>
+        <img id="main-photo" src="" alt="BB" />
+      </div>
+    </div>
+
+    <div class="notepad-section">
+      <div class="notepad-header">
+        <h2>Shared Notepad</h2>
+        <div>
+          <span id="notepad-status" class="notepad-status connected">Connected</span>
+          <span id="notepad-version" style="margin-left: 0.5rem; color: #9ca3af; font-size: 0.75rem;">v0</span>
+        </div>
+      </div>
+      <div class="notepad-card">
+        <textarea id="notepad" placeholder="Type your thoughts here..."></textarea>
+        <div class="notepad-info">
+          <span><span class="notepad-update-dot"></span>Live — syncs every 2s</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer">Made with 💕 for my favorite BB</p>
+  </div>
+
+  <script>
+    // === PHOTO ROTATION ===
+    const CLOUD_NAME = 'dft7qmfpl';
+    const TAG = 'bb';
+
+    let photos = [];
+    let current = 0;
+    const mainImg = document.getElementById('main-photo');
+
+    function show(i) {
+      current = i;
+      mainImg.src = photos[current];
+    }
+
+    function rotateNext() {
+      mainImg.classList.add('fade');
+      setTimeout(() => {
+        current = (current + 1) % photos.length;
+        mainImg.src = photos[current];
+        mainImg.classList.remove('fade');
+      }, 600);
+    }
+
+    async function loadPhotos() {
+      try {
+        const res = await fetch(
+          `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${TAG}.json`
+        );
+        const data = await res.json();
+        photos = data.resources.map(r =>
+          `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/w_800,c_limit/${r.public_id}.${r.format}`
+        );
+        for (let i = photos.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [photos[i], photos[j]] = [photos[j], photos[i]];
+        }
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('album').style.display = 'block';
+        show(0);
+        setInterval(rotateNext, 5000);
+      } catch (e) {
+        document.getElementById('loading').textContent = 'Could not load photos — check your cloud name & tag!';
+      }
+    }
+
+    loadPhotos();
+
+    // === SHARED NOTEPAD ===
+    const notepadEl = document.getElementById('notepad');
+    const notepadStatus = document.getElementById('notepad-status');
+    const notepadVersion = document.getElementById('notepad-version');
+    let knownVersion = 0;
+    let saveTimeout = null;
+    let isSaving = false;
+    let localEditing = false;
+
+    function setStatus(type, text) {
+      notepadStatus.className = 'notepad-status ' + type;
+      notepadStatus.textContent = text;
+    }
+
+    async function fetchNotepad() {
+      try {
+        const res = await fetch('/api/notepad');
+        if (!res.ok) throw new Error('fetch failed');
+        const data = await res.json();
+        if (data.version > knownVersion && !localEditing) {
+          knownVersion = data.version;
+          notepadEl.value = data.content;
+        } else if (data.version > knownVersion) {
+          knownVersion = data.version;
+          notepadEl.value = data.content;
+          localEditing = false;
+        }
+        notepadVersion.textContent = 'v' + knownVersion;
+        if (!isSaving) setStatus('connected', 'Connected');
+      } catch (e) {
+        setStatus('error', 'Offline');
+      }
+    }
+
+    async function saveNotepad() {
+      isSaving = true;
+      setStatus('saving', 'Saving...');
+      try {
+        const res = await fetch('/api/notepad', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: notepadEl.value }),
+        });
+        if (!res.ok) throw new Error('save failed');
+        const data = await res.json();
+        knownVersion = data.version;
+        notepadVersion.textContent = 'v' + knownVersion;
+        setStatus('connected', 'Saved');
+        localEditing = false;
+      } catch (e) {
+        setStatus('error', 'Save failed');
+      }
+      isSaving = false;
+    }
+
+    notepadEl.addEventListener('input', () => {
+      localEditing = true;
+      setStatus('saving', 'Editing...');
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => saveNotepad(), 800);
+    });
+
+    fetchNotepad();
+    setInterval(fetchNotepad, 2000);
+  </script>
+</body>
+</html>
