@@ -137,6 +137,53 @@
       50% { opacity: 0.4; }
     }
 
+    /* Past day entries */
+    .past-days { margin-top: 1rem; }
+    .past-day {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+    .past-day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .past-day-header:hover { background: #fdf2f8; }
+    .past-day-header h3 {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    .past-day-arrow {
+      font-size: 0.75rem;
+      color: #d1d5db;
+      transition: transform 0.2s;
+    }
+    .past-day.open .past-day-arrow { transform: rotate(180deg); }
+    .past-day-content {
+      display: none;
+      padding: 0 1rem 1rem;
+    }
+    .past-day.open .past-day-content { display: block; }
+    .past-day-content pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: #6b7280;
+      line-height: 1.6;
+      background: #fdf2f8;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+
     .footer {
       text-align: center;
       color: #f9a8d4;
@@ -164,7 +211,7 @@
 
     <div class="notepad-section">
       <div class="notepad-header">
-        <h2>Shared Notepad</h2>
+        <h2 id="notepad-title">Today's Notepad</h2>
         <div>
           <span id="notepad-status" class="notepad-status connected">Connected</span>
           <span id="notepad-version" style="margin-left: 0.5rem; color: #9ca3af; font-size: 0.75rem;">v0</span>
@@ -176,6 +223,7 @@
           <span><span class="notepad-update-dot"></span>Live — syncs every 2s</span>
         </div>
       </div>
+      <div id="past-days" class="past-days"></div>
     </div>
 
     <p class="footer">Made with 💕 for my favorite BB</p>
@@ -232,10 +280,21 @@
     const notepadEl = document.getElementById('notepad');
     const notepadStatus = document.getElementById('notepad-status');
     const notepadVersion = document.getElementById('notepad-version');
+    const notepadTitle = document.getElementById('notepad-title');
+    const pastDaysEl = document.getElementById('past-days');
     let knownVersion = 0;
     let saveTimeout = null;
     let isSaving = false;
     let localEditing = false;
+
+    function getToday() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function formatDateLabel(dateStr) {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
 
     function setStatus(type, text) {
       notepadStatus.className = 'notepad-status ' + type;
@@ -244,7 +303,7 @@
 
     async function fetchNotepad() {
       try {
-        const res = await fetch('/api/notepad');
+        const res = await fetch(`/api/notepad?date=${getToday()}`);
         if (!res.ok) throw new Error('fetch failed');
         const data = await res.json();
         if (data.version > knownVersion && !localEditing) {
@@ -266,7 +325,7 @@
       isSaving = true;
       setStatus('saving', 'Saving...');
       try {
-        const res = await fetch('/api/notepad', {
+        const res = await fetch(`/api/notepad?date=${getToday()}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: notepadEl.value }),
@@ -283,6 +342,50 @@
       isSaving = false;
     }
 
+    async function loadPastDays() {
+      try {
+        const res = await fetch('/api/notepad?list=true');
+        if (!res.ok) return;
+        const { dates } = await res.json();
+        const today = getToday();
+        const past = dates.filter(d => d !== today);
+        if (past.length === 0) {
+          pastDaysEl.innerHTML = '';
+          return;
+        }
+        pastDaysEl.innerHTML = past.map(date => `
+          <div class="past-day" data-date="${date}">
+            <div class="past-day-header" onclick="togglePastDay(this)">
+              <h3>${formatDateLabel(date)}</h3>
+              <span class="past-day-arrow">▼</span>
+            </div>
+            <div class="past-day-content">
+              <pre>Loading...</pre>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {}
+    }
+
+    async function togglePastDay(headerEl) {
+      const dayEl = headerEl.parentElement;
+      const isOpen = dayEl.classList.contains('open');
+      if (isOpen) {
+        dayEl.classList.remove('open');
+        return;
+      }
+      dayEl.classList.add('open');
+      const date = dayEl.dataset.date;
+      const pre = dayEl.querySelector('pre');
+      try {
+        const res = await fetch(`/api/notepad?date=${date}`);
+        const data = await res.json();
+        pre.textContent = data.content || '(empty)';
+      } catch (e) {
+        pre.textContent = 'Failed to load.';
+      }
+    }
+
     notepadEl.addEventListener('input', () => {
       localEditing = true;
       setStatus('saving', 'Editing...');
@@ -290,8 +393,11 @@
       saveTimeout = setTimeout(() => saveNotepad(), 800);
     });
 
+    notepadTitle.textContent = `Today's Notepad — ${formatDateLabel(getToday())}`;
     fetchNotepad();
     setInterval(fetchNotepad, 2000);
+    loadPastDays();
+    setInterval(loadPastDays, 30000);
   </script>
 </body>
 </html>
